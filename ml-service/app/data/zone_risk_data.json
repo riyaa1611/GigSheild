@@ -1,0 +1,79 @@
+{
+  "zones": [
+    {
+      "id": 1,
+      "name": "Andheri East",
+      "city": "Mumbai",
+      "risk_level": "high",
+      "historical": {
+        "avg_annual_rainfall_mm": 2400,
+        "flood_events_per_year": 4,
+        "extreme_heat_days_per_year": 12,
+        "avg_monsoon_aqi": 85,
+        "avg_non_monsoon_aqi": 145
+      },
+      "base_premium_inr": 55,
+      "monsoon_multiplier": 1.4
+    },
+    {
+      "id": 2,
+      "name": "Dharavi",
+      "city": "Mumbai",
+      "risk_level": "extreme",
+      "historical": {
+        "avg_annual_rainfall_mm": 2800,
+        "flood_events_per_year": 8,
+        "extreme_heat_days_per_year": 18,
+        "avg_monsoon_aqi": 110,
+        "avg_non_monsoon_aqi": 195
+      },
+      "base_premium_inr": 75,
+      "monsoon_multiplier": 1.6
+    },
+    {
+      "id": 3,
+      "name": "Bandra West",
+      "city": "Mumbai",
+      "risk_level": "medium",
+      "historical": {
+        "avg_annual_rainfall_mm": 2100,
+        "flood_events_per_year": 2,
+        "extreme_heat_days_per_year": 8,
+        "avg_monsoon_aqi": 70,
+        "avg_non_monsoon_aqi": 115
+      },
+      "base_premium_inr": 40,
+      "monsoon_multiplier": 1.2
+    },
+    {
+      "id": 4,
+      "name": "Kurla",
+      "city": "Mumbai",
+      "risk_level": "high",
+      "historical": {
+        "avg_annual_rainfall_mm": 2600,
+        "flood_events_per_year": 5,
+        "extreme_heat_days_per_year": 15,
+        "avg_monsoon_aqi": 95,
+        "avg_non_monsoon_aqi": 165
+      },
+      "base_premium_inr": 60,
+      "monsoon_multiplier": 1.5
+    },
+    {
+      "id": 5,
+      "name": "Borivali East",
+      "city": "Mumbai",
+      "risk_level": "low",
+      "historical": {
+        "avg_annual_rainfall_mm": 1800,
+        "flood_events_per_year": 1,
+        "extreme_heat_days_per_year": 5,
+        "avg_monsoon_aqi": 55,
+        "avg_non_monsoon_aqi": 95
+      },
+      "base_premium_inr": 28,
+      "monsoon_multiplier": 1.1
+    }
+  ]
+}

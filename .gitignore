@@ -1,0 +1,15 @@
+.claude/
+node_modules/
+.env
+.env.local
+.env.*.local
+dist/
+build/
+*.log
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+*.db
+postgres_data/
