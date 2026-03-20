@@ -3,25 +3,6 @@
 > **Guidewire DEVTrails 2026 | Unicorn Chase | Phase 1 Submission**
 > *"Every rainstorm costs a rider. GigShield makes sure it doesn't."*
 
----
-
-##  Table of Contents
-
-1. [Problem Statement](#-problem-statement)
-2. [Our Solution](#-our-solution)
-3. [Persona & Scenarios](#-persona--scenarios)
-4. [Application Workflow](#-application-workflow)
-5. [Weekly Premium Model](#-weekly-premium-model)
-6. [Parametric Triggers](#-parametric-triggers)
-7. [Platform Choice — Web vs Mobile](#-platform-choice--web-vs-mobile)
-8. [AI/ML Integration Plan](#-aiml-integration-plan)
-9. [System Architecture](#-system-architecture)
-10. [Tech Stack](#-tech-stack)
-11. [Development Plan](#-development-plan)
-12. [Team](#-team)
-
----
-
 ##  Problem Statement
 
 India's 15 million+ gig delivery workers (Zomato, Swiggy, Zepto, Amazon, Blinkit) are the invisible backbone of the digital economy. Yet they operate with **zero income protection**.
