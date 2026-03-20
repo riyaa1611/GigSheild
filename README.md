@@ -372,7 +372,6 @@ flowchart LR
 - [ ] Wireframes for Worker App and Admin Dashboard
 - [ ] Synthetic dataset generation for ML model training
 - [ ] Basic PWA scaffold (React + Tailwind)
-- [ ] Phase 1 video walkthrough (2 min)
 
 ### Phase 2 — Automation & Protection (March 21–April 4)
 - [ ] Worker registration + KYC flow
@@ -382,7 +381,6 @@ flowchart LR
 - [ ] Claims auto-initiation pipeline
 - [ ] Basic fraud detection (rule-based + Isolation Forest v1)
 - [ ] Admin dashboard v1 (live trigger map, claims queue)
-- [ ] 2-minute demo video
 
 ### Phase 3 — Scale & Optimise (April 5–17)
 - [ ] Advanced GPS spoofing detection
@@ -392,7 +390,6 @@ flowchart LR
 - [ ] Insurer dashboard (loss ratios, predictive analytics)
 - [ ] End-to-end disruption simulation demo
 - [ ] Final pitch deck (PDF)
-- [ ] 5-minute walkthrough demo video
 
 ---
 
