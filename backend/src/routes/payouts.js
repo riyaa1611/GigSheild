@@ -1,82 +1,77 @@
 const express = require('express');
+const { pool } = require('../db/index');
+const { requireAuth } = require('../middleware/authMiddleware');
+const { requireAdmin } = require('../middleware/adminMiddleware');
+
 const router = express.Router();
-const { authenticateToken, authenticateAdmin } = require('../middleware/auth');
-const { query } = require('../db/index');
-const { initiatePayout } = require('../services/payoutService');
 
-// GET /api/payouts - worker's payouts
-router.get('/', authenticateToken, async (req, res) => {
-  try {
-    const { limit = 20, offset = 0 } = req.query;
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
 
-    const result = await query(
-      `SELECT pay.*, c.trigger_type, c.disruption_date, c.hours_lost,
-              z.name AS zone_name
-       FROM payouts pay
-       LEFT JOIN claims c ON pay.claim_id = c.id
-       LEFT JOIN zones z ON c.zone_id = z.id
-       WHERE pay.worker_id = $1
-       ORDER BY pay.created_at DESC
-       LIMIT $2 OFFSET $3`,
-      [req.worker.id, parseInt(limit, 10), parseInt(offset, 10)]
-    );
+/**
+ * @desc Get worker's payouts history
+ * @route GET /api/payouts/history
+ */
+router.get('/history', requireAuth, asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
 
-    const countRes = await query(
-      'SELECT COUNT(*) FROM payouts WHERE worker_id = $1',
-      [req.worker.id]
-    );
+  const { rows } = await pool.query(`
+    SELECT p.amount, p.status, p.paid_at, t.type as trigger_type,
+           EXTRACT(EPOCH FROM (p.paid_at - c.created_at))/60 AS payout_time_minutes
+    FROM payouts p
+    JOIN claims c ON c.id = p.claim_id
+    JOIN triggers t ON t.id = c.trigger_id
+    WHERE p.user_id = $1
+    ORDER BY p.created_at DESC
+  `, [userId]);
 
-    return res.json({
-      payouts: result.rows,
-      total: parseInt(countRes.rows[0].count, 10),
-    });
-  } catch (err) {
-    console.error('GET /payouts error:', err);
-    return res.status(500).json({ error: 'Server error.' });
-  }
-});
+  res.json({ success: true, count: rows.length, data: rows });
+}));
 
-// POST /api/payouts/:claimId/initiate - initiate payout for approved claim
-// Can be called by admin (no worker auth needed here, admin or internal use)
-router.post('/:claimId/initiate', authenticateAdmin, async (req, res) => {
-  const claimId = parseInt(req.params.claimId, 10);
-  if (isNaN(claimId)) {
-    return res.status(400).json({ error: 'Invalid claim ID.' });
-  }
+/**
+ * @desc Admin: Payout analytics snapshot
+ * @route GET /api/payouts/admin/analytics
+ */
+router.get('/admin/analytics', requireAdmin, asyncHandler(async (req, res) => {
+  // Aggregate overall logic
+  const analyticsRes = await pool.query(`
+    SELECT 
+      SUM(CASE WHEN p.status = 'success' THEN p.amount ELSE 0 END) as total_paid_out,
+      COUNT(CASE WHEN p.status = 'success' THEN 1 END) as success_count,
+      COUNT(CASE WHEN p.status = 'failed' THEN 1 END) as failed_count,
+      COUNT(*) as total_count,
+      SUM(p.attempt_count) as retries_count,
+      AVG(EXTRACT(EPOCH FROM (p.paid_at - c.created_at))/60) as avg_payout_time_minutes
+    FROM payouts p
+    JOIN claims c ON c.id = p.claim_id
+  `);
 
-  try {
-    // Verify claim exists and is approved
-    const claimRes = await query(
-      `SELECT * FROM claims WHERE id = $1`,
-      [claimId]
-    );
+  const stats = analyticsRes.rows[0];
+  const totalCount = parseInt(stats.total_count) || 1; // prevent div by zero
+  const successRate = (parseInt(stats.success_count) / totalCount) * 100;
 
-    if (claimRes.rowCount === 0) {
-      return res.status(404).json({ error: 'Claim not found.' });
+  // Breakdown by trigger type
+  const typeRes = await pool.query(`
+    SELECT t.type, COUNT(*) as count, SUM(p.amount) as total
+    FROM payouts p
+    JOIN claims c ON p.claim_id = c.id
+    JOIN triggers t ON t.id = c.trigger_id
+    WHERE p.status = 'success'
+    GROUP BY t.type
+  `);
+
+  res.json({
+    success: true,
+    data: {
+      totalPaidOut: stats.total_paid_out || 0,
+      avgPayoutTimeMinutes: stats.avg_payout_time_minutes || 0,
+      successRate: successRate.toFixed(2) + '%',
+      failedCount: stats.failed_count || 0,
+      retriesCount: stats.retries_count || 0,
+      payoutsByTriggerType: typeRes.rows
     }
-
-    const claim = claimRes.rows[0];
-
-    if (claim.status !== 'approved') {
-      return res.status(400).json({ error: `Claim must be in 'approved' status to initiate payout. Current: ${claim.status}` });
-    }
-
-    // Check if payout already exists
-    const existingPayout = await query(
-      'SELECT id FROM payouts WHERE claim_id = $1',
-      [claimId]
-    );
-    if (existingPayout.rowCount > 0) {
-      return res.status(409).json({ error: 'Payout already initiated for this claim.' });
-    }
-
-    const payout = await initiatePayout(claimId);
-
-    return res.status(201).json({ message: 'Payout initiated.', payout });
-  } catch (err) {
-    console.error('POST /payouts/:claimId/initiate error:', err);
-    return res.status(500).json({ error: 'Server error.' });
-  }
-});
+  });
+}));
 
 module.exports = router;

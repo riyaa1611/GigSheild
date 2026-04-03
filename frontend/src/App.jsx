@@ -1,99 +1,73 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import useAuthStore from './store/useAuthStore';
 
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import WorkerDashboard from './pages/WorkerDashboard';
-import PoliciesPage from './pages/PoliciesPage';
-import ClaimsPage from './pages/ClaimsPage';
-import AdminDashboard from './pages/AdminDashboard';
-import AdminClaimsPage from './pages/AdminClaimsPage';
-import LoadingSpinner from './components/shared/LoadingSpinner';
+// Pages
+import { Onboarding } from './pages/Onboarding';
+import { Plans } from './pages/Plans';
+import { Dashboard } from './pages/Dashboard';
+import { Payouts } from './pages/Payouts';
+import { Profile } from './pages/Profile';
 
-function RootRedirect() {
-  const { user, role, loading } = useAuth();
-  if (loading) return <LoadingSpinner message="Loading GigShield..." />;
-  if (!user) return <Navigate to="/login" replace />;
-  if (role === 'admin') return <Navigate to="/admin" replace />;
-  return <Navigate to="/dashboard" replace />;
-}
+// Admin Pages
+import { AdminLayout } from './pages/admin/layout/AdminLayout';
+import { TriggerMap } from './pages/admin/TriggerMap';
+import { ClaimsQueue } from './pages/admin/ClaimsQueue';
+import { Analytics } from './pages/admin/Analytics';
+import { FraudMonitor } from './pages/admin/FraudMonitor';
+import { ForecastMap } from './pages/admin/ForecastMap';
 
-function ProtectedWorker({ children }) {
-  const { user, role, loading } = useAuth();
-  if (loading) return <LoadingSpinner message="Loading..." />;
-  if (!user || role !== 'worker') return <Navigate to="/login" replace />;
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  if (!isAuthenticated) return <Navigate to="/onboarding" />;
   return children;
-}
+};
 
-function ProtectedAdmin({ children }) {
-  const { user, role, loading } = useAuth();
-  if (loading) return <LoadingSpinner message="Loading..." />;
-  if (!user || role !== 'admin') return <Navigate to="/login" replace />;
-  return children;
-}
-
-function AppRoutes() {
+function App() {
   return (
-    <Routes>
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedWorker>
-            <WorkerDashboard />
-          </ProtectedWorker>
-        }
-      />
-      <Route
-        path="/policies"
-        element={
-          <ProtectedWorker>
-            <PoliciesPage />
-          </ProtectedWorker>
-        }
-      />
-      <Route
-        path="/claims"
-        element={
-          <ProtectedWorker>
-            <ClaimsPage />
-          </ProtectedWorker>
-        }
-      />
-
-      <Route
-        path="/admin"
-        element={
-          <ProtectedAdmin>
-            <AdminDashboard />
-          </ProtectedAdmin>
-        }
-      />
-      <Route
-        path="/admin/claims"
-        element={
-          <ProtectedAdmin>
-            <AdminClaimsPage />
-          </ProtectedAdmin>
-        }
-      />
-
-      {/* Catch-all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Router>
+      <div className="antialiased selection:bg-indigo-500/30">
+        <Toaster 
+          position="top-center" 
+          toastOptions={{
+            style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' }
+          }} 
+        />
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          
+          <Route path="/plans" element={
+            <ProtectedRoute><Plans /></ProtectedRoute>
+          } />
+          
+          <Route path="/dashboard" element={
+            <ProtectedRoute><Dashboard /></ProtectedRoute>
+          } />
+          
+          <Route path="/payouts" element={
+            <ProtectedRoute><Payouts /></ProtectedRoute>
+          } />
+          
+          <Route path="/profile" element={
+            <ProtectedRoute><Profile /></ProtectedRoute>
+          } />
+          
+          <Route path="/admin" element={<AdminLayout />}>
+             <Route index element={<Navigate to="/admin/map" replace />} />
+             <Route path="map" element={<TriggerMap />} />
+             <Route path="claims" element={<ClaimsQueue />} />
+             <Route path="analytics" element={<Analytics />} />
+             <Route path="fraud" element={<FraudMonitor />} />
+             <Route path="forecast" element={<ForecastMap />} />
+          </Route>
+          
+          <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
-export default function App() {
-  return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
-  );
-}
+export default App;

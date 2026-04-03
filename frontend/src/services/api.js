@@ -1,90 +1,61 @@
 import axios from 'axios';
-
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+import useAuthStore from '../store/useAuthStore';
 
 const api = axios.create({
-  baseURL: BASE_URL,
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
 });
 
-// Request interceptor: attach JWT
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('gigshield_token');
+    const token = useAuthStore.getState().token;
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: handle 401
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('gigshield_token');
-      localStorage.removeItem('gigshield_role');
-      window.location.href = '/login';
+    if (error.response && error.response.status === 401) {
+      useAuthStore.getState().logout();
+      window.location.href = '/onboarding';
     }
     return Promise.reject(error);
   }
 );
 
-// ─── Auth ──────────────────────────────────────────────────────────────────
-export const authAPI = {
-  login: (email, password) =>
-    api.post('/auth/login', { email, password }),
+// Auth
+export const sendOtp = (phone) => api.post('/auth/send-otp', { phone });
+export const verifyOtp = (phone, otp) => api.post('/auth/verify-otp', { phone, otp });
+export const verifyAadhaarMock = (userId, aadhaarNumber) => api.post('/auth/aadhaar-mock', { userId, aadhaarNumber });
+export const linkPlatform = (userId, platform, platformId) => api.post('/auth/link-platform', { userId, platform, platformId });
 
-  adminLogin: (email, password) =>
-    api.post('/auth/admin/login', { email, password }),
+// Policy
+export const getPlans = () => api.get('/policies/plans');
+export const subscribePlan = (planType, upiHandle) => api.post('/policies/subscribe', { planType, upiHandle });
+export const getActivePolicy = () => api.get('/policies/active');
+export const cancelPolicy = () => api.post('/policies/cancel');
 
-  register: (formData) =>
-    api.post('/auth/register', formData),
-};
+// Claims & Triggers
+export const getClaims = (status) => api.get(`/claims${status ? `?status=${status}` : ''}`);
+export const getLiveTriggers = () => api.get('/triggers/live');
 
-// ─── Worker ────────────────────────────────────────────────────────────────
-export const workerAPI = {
-  getMe: () => api.get('/workers/me'),
-  getDashboard: () => api.get('/workers/me/dashboard'),
-  updateProfile: (data) => api.put('/workers/me', data),
-};
+// Payouts
+export const getPayoutHistory = () => api.get('/payouts/history');
 
-// ─── Policy ────────────────────────────────────────────────────────────────
-export const policyAPI = {
-  list: () => api.get('/policies'),
-  create: (data) => api.post('/policies', data),
-  deactivate: (id) => api.put(`/policies/${id}/deactivate`),
-  previewPremium: () => api.get('/policies/preview'),
-};
+// Admin
+export const getAdminClaims = (status, limit=50) => api.get(`/claims/admin/all?limit=${limit}${status ? `&status=${status}` : ''}`);
+export const getAdminFlaggedClaims = () => api.get('/claims/admin/flagged');
+export const reviewClaim = (id, action, adminNote) => api.patch(`/claims/admin/${id}/review`, { action, adminNote });
 
-// ─── Claims ────────────────────────────────────────────────────────────────
-export const claimsAPI = {
-  list: () => api.get('/claims'),
-  getById: (id) => api.get(`/claims/${id}`),
-};
-
-// ─── Payouts ───────────────────────────────────────────────────────────────
-export const payoutsAPI = {
-  list: () => api.get('/payouts'),
-};
-
-// ─── Admin ─────────────────────────────────────────────────────────────────
-export const adminAPI = {
-  getDashboard: () => api.get('/admin/dashboard'),
-  getClaims: (filters) => api.get('/admin/claims', { params: filters }),
-  overrideClaim: (id, status) => api.patch(`/admin/claims/${id}/override`, { status }),
-  getWorkers: () => api.get('/admin/workers'),
-  getZones: () => api.get('/admin/zones'),
-};
-
-// ─── Triggers ──────────────────────────────────────────────────────────────
-export const triggerAPI = {
-  getActive: () => api.get('/triggers/active'),
-  setCurfew: (zoneId, active) => api.post('/triggers/curfew', { zone_id: zoneId, active }),
-  setFlood: (zoneId, active) => api.post('/triggers/flood', { zone_id: zoneId, active }),
-  checkZone: (zoneId) => api.get(`/triggers/zone/${zoneId}`),
-};
+export const getAdminAnalytics = () => api.get('/analytics');
+export const getAdminAnalyticsTriggers = () => api.get('/analytics/triggers');
+export const getAdminAnalyticsClaims = () => api.get('/analytics/claims-vs-premiums');
+export const getAdminAnalyticsPlans = () => api.get('/analytics/plans');
+export const getAdminFraudStats = () => api.get('/analytics/fraud/stats');
+export const getAdminForecast = () => api.get('/analytics/forecast');
 
 export default api;

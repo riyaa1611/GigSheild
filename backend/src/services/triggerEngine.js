@@ -1,262 +1,153 @@
-const { query } = require('../db/index');
-const { getWeatherForZone, getAQIForZone } = require('./weatherService');
-const { checkDuplicateClaim, validateZoneMatch, checkClaimVelocity } = require('./fraudDetection');
+const axios = require('axios');
+const Queue = require('bull');
+const redisClient = require('../redis');
+const { pool } = require('../db/index');
+const socketModule = require('../socket');
 
-// Parametric thresholds
-const THRESHOLDS = {
-  heavy_rain:   { value: 50,  unit: 'mm/day',  description: 'Heavy rainfall > 50mm/day' },
-  extreme_heat: { value: 42,  unit: '°C',      description: 'Extreme heat > 42°C' },
-  severe_aqi:   { value: 300, unit: 'AQI',     description: 'Severe AQI > 300' },
+const claimsQueue = new Queue('claims-queue', process.env.REDIS_URL || 'redis://localhost:6379');
+
+const API_KEYS = {
+  weather: process.env.OPENWEATHER_API_KEY || 'mock',
+  aqi: process.env.CPCB_AQI_KEY || 'mock',
+  news: process.env.NEWS_API_KEY || 'mock',
+  imd: process.env.IMD_CYCLONE_KEY || 'mock'
 };
 
-/**
- * Estimate hours lost based on trigger type and severity.
- */
-const estimateHoursLost = (triggerType, triggerValue) => {
-  switch (triggerType) {
-    case 'heavy_rain': {
-      // 50-70mm: 4hrs, 70-100mm: 6hrs, >100mm: 8hrs
-      if (triggerValue >= 100) return 8.0;
-      if (triggerValue >= 70)  return 6.0;
-      if (triggerValue >= 50)  return 4.0;
-      return 2.0;
-    }
-    case 'extreme_heat': {
-      // 42-44°C: 3hrs, 44-46°C: 5hrs, >46°C: 7hrs
-      if (triggerValue >= 46) return 7.0;
-      if (triggerValue >= 44) return 5.0;
-      if (triggerValue >= 42) return 3.0;
-      return 1.0;
-    }
-    case 'severe_aqi': {
-      // 300-400: 4hrs, 400-500: 6hrs, >500: 8hrs
-      if (triggerValue >= 500) return 8.0;
-      if (triggerValue >= 400) return 6.0;
-      if (triggerValue >= 300) return 4.0;
-      return 2.0;
-    }
-    case 'flood_alert': {
-      // Severity 1-2: 8hrs (full day), 3+: 8hrs
-      return 8.0;
-    }
-    case 'curfew': {
-      // Curfews typically last most of the day
-      return 8.0;
-    }
-    default:
-      return 4.0;
+// Internal APIs
+const PLATFORM_STATUS_API = 'http://localhost:3001/mock/platforms';
+
+const evaluateTriggers = async (pincode, data) => {
+  const triggers = [];
+  
+  // T-01: rainfall > 64.4 mm/hr
+  if (data.rainfall > 64.4) {
+    triggers.push({ type: 'T-01', severity: 'High', value: data.rainfall, desc: 'Heavy Rain' });
   }
+  
+  // T-02: flood depth > 30cm
+  if (data.floodDepth > 30) {
+    triggers.push({ type: 'T-02', severity: 'Critical', value: data.floodDepth, desc: 'Flash Flood' });
+  }
+
+  // T-03: AQI > 300 for 2hr sustained (mocking sustained via simple threshold here)
+  if (data.aqi > 300) {
+    triggers.push({ type: 'T-03', severity: 'Severe', value: data.aqi, desc: 'Severe AQI' });
+  }
+
+  // T-04: temperature > 45°C during 11AM–4PM
+  const currentHour = new Date().getHours();
+  if (data.temperature > 45 && currentHour >= 11 && currentHour <= 16) {
+    triggers.push({ type: 'T-04', severity: 'Critical', value: data.temperature, desc: 'Extreme Heat' });
+  }
+
+  // T-05: Section 144 keyword in news
+  if (data.hasCurfewKeyword) {
+    triggers.push({ type: 'T-05', severity: 'Critical', value: 1, desc: 'Curfew / Section 144' });
+  }
+
+  // T-06: IMD Orange/Red cyclone alert
+  if (['Orange', 'Red'].includes(data.cycloneAlert)) {
+    triggers.push({ type: 'T-06', severity: data.cycloneAlert, value: data.cycloneAlert, desc: 'Cyclone Alert' });
+  }
+
+  // T-07: platform app downtime > 4 continuous hours
+  if (data.platformDowntimeHours > 4) {
+    triggers.push({ type: 'T-07', severity: 'Severe', value: data.platformDowntimeHours, desc: 'Platform Outage' });
+  }
+
+  return triggers;
 };
 
-/**
- * Calculate payout for a worker given disruption info.
- * Formula: (weekly_income / 7) * (hours_lost / 8)
- */
-const calculatePayout = (worker, disruption) => {
-  const hoursLost = estimateHoursLost(disruption.trigger_type, disruption.trigger_value);
-  const dailyIncome = worker.weekly_income / 7;
-  const payout = dailyIncome * (hoursLost / 8);
-  return {
-    payout_amount: parseFloat(payout.toFixed(2)),
-    hours_lost: hoursLost,
+const fetchZoneData = async (pincode) => {
+  // Try caching layer first
+  const cachedRain = await redisClient.get(`zone:rain:${pincode}`);
+  const cachedAqi = await redisClient.get(`zone:aqi:${pincode}`);
+  
+  // MOCK API calls for demo, replacing with real Axios calls based on keys if available
+  const data = {
+    rainfall: cachedRain ? parseFloat(cachedRain) : Math.random() * 80, // mm/hr
+    floodDepth: Math.random() * 50, // cm
+    aqi: cachedAqi ? parseInt(cachedAqi) : Math.floor(Math.random() * 400),
+    temperature: 30 + Math.random() * 20, // 30-50 C
+    hasCurfewKeyword: Math.random() > 0.95,
+    cycloneAlert: Math.random() > 0.9 ? 'Orange' : 'None',
+    platformDowntimeHours: Math.random() > 0.9 ? 5 : 0
   };
+
+  // Cache some data (TTL 15m = 900s)
+  await redisClient.setEx(`zone:rain:${pincode}`, 900, data.rainfall.toString());
+  await redisClient.setEx(`zone:aqi:${pincode}`, 900, data.aqi.toString());
+
+  return data;
 };
 
-/**
- * Create auto-claims for all workers in a zone with active policies covering the trigger.
- */
-const createAutoClaimsForDisruption = async (disruption) => {
-  const { id: disruptionId, zone_id, trigger_type, trigger_value } = disruption;
-  const today = new Date().toISOString().split('T')[0];
-  const createdClaims = [];
+const processZoneTriggers = async (pincode) => {
+  console.log(`[TriggerEngine] Evaluating zone ${pincode}`);
+  const data = await fetchZoneData(pincode);
+  const triggers = await evaluateTriggers(pincode, data);
 
-  try {
-    // Get all workers in zone with active policies covering this trigger
-    const workersRes = await query(
-      `SELECT w.id AS worker_id, w.weekly_income, w.zone_id,
-              p.id AS policy_id, p.covered_triggers, p.coverage_amount
-       FROM workers w
-       JOIN policies p ON p.worker_id = w.id
-       WHERE w.zone_id = $1
-         AND p.status = 'active'
-         AND $2 = ANY(p.covered_triggers)`,
-      [zone_id, trigger_type]
-    );
+  for (const t of triggers) {
+    const dedupKey = `trigger:dedup:${t.type}:${pincode}`;
+    const exists = await redisClient.get(dedupKey);
 
-    for (const row of workersRes.rows) {
-      // Fraud checks
-      const dupCheck = await checkDuplicateClaim(row.worker_id, zone_id, trigger_type, today);
-      if (dupCheck.isDuplicate) {
-        console.log(`[TriggerEngine] Skipping duplicate claim for worker ${row.worker_id}: ${dupCheck.reason}`);
-        // Create flagged claim instead
-        await query(
-          `INSERT INTO claims (worker_id, policy_id, trigger_type, disruption_date, zone_id,
-            hours_lost, payout_amount, status, auto_generated, fraud_flag, fraud_reason)
-           VALUES ($1,$2,$3,$4,$5,0,0,'flagged',true,true,$6)`,
-          [row.worker_id, row.policy_id, trigger_type, today, zone_id, dupCheck.reason]
-        );
-        continue;
-      }
+    if (!exists) {
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + 8 * 60 * 60 * 1000); // +8 hours
 
-      const velocityCheck = await checkClaimVelocity(row.worker_id);
-      if (velocityCheck.isFlagged) {
-        console.log(`[TriggerEngine] Claim velocity flag for worker ${row.worker_id}: ${velocityCheck.reason}`);
-      }
-
-      const { payout_amount, hours_lost } = calculatePayout(row, disruption);
-
-      // Cap payout at coverage_amount
-      const finalPayout = Math.min(payout_amount, parseFloat(row.coverage_amount));
-
-      const claimRes = await query(
-        `INSERT INTO claims (worker_id, policy_id, trigger_type, disruption_date, zone_id,
-          hours_lost, payout_amount, status, auto_generated, fraud_flag, fraud_reason)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true,$9,$10) RETURNING *`,
-        [
-          row.worker_id,
-          row.policy_id,
-          trigger_type,
-          today,
-          zone_id,
-          hours_lost,
-          finalPayout,
-          velocityCheck.isFlagged ? 'flagged' : 'approved',
-          velocityCheck.isFlagged,
-          velocityCheck.isFlagged ? velocityCheck.reason : null,
-        ]
+      // Insert into Postgres
+      const { rows } = await pool.query(
+        `INSERT INTO triggers (trigger_type, zone_pincode, threshold_value, current_value, raw_api_payload, status, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+        [t.type, pincode, t.value.toString(), t.value.toString(), JSON.stringify(data), 'active', expiresAt]
       );
 
-      createdClaims.push(claimRes.rows[0]);
-    }
+      const triggerId = rows[0].id;
 
-    console.log(`[TriggerEngine] Created ${createdClaims.length} claims for disruption ${disruptionId}`);
-    return createdClaims;
-  } catch (err) {
-    console.error('[TriggerEngine] Error creating auto claims:', err);
-    throw err;
+      // Set redis dedup TTL 30min
+      await redisClient.setEx(dedupKey, 1800, 'processing');
+
+      // Push to Bull queue
+      const payload = {
+        triggerId,
+        type: t.type,
+        zonePincode: pincode,
+        severity: t.severity,
+        thresholdValue: t.value,
+        triggeredAt: now
+      };
+      
+      await claimsQueue.add(payload);
+
+      console.log(`[TriggerEngine] Trigger fired! Zone: ${pincode}, Type: ${t.type}, Value: ${t.value}`);
+
+      // Emit via Socket.io
+      try {
+        const io = socketModule.getIo();
+        io.emit('trigger:new', payload);
+      } catch (err) {
+        console.error('[TriggerEngine] Socket.io emit failed (not initialized?)');
+      }
+    } else {
+      console.log(`[TriggerEngine] Deduped duplicate trigger event ${t.type} for zone ${pincode}`);
+    }
   }
 };
 
-/**
- * Check triggers for a specific zone and create disruption records if thresholds are crossed.
- */
-const checkZoneTriggers = async (zoneId) => {
-  const createdDisruptions = [];
-
+const checkAllActiveTriggers = async () => {
+  // Fetch distinct pincodes from workers/zones
   try {
-    const zoneRes = await query('SELECT * FROM zones WHERE id = $1', [zoneId]);
-    if (zoneRes.rowCount === 0) {
-      console.warn(`[TriggerEngine] Zone ${zoneId} not found.`);
-      return [];
-    }
-
-    const zone = zoneRes.rows[0];
-    console.log(`[TriggerEngine] Checking triggers for zone: ${zone.name}`);
-
-    // Get weather
-    const weather = await getWeatherForZone(zone);
-    const aqiData = await getAQIForZone(zone);
-
-    const checks = [
-      {
-        trigger_type: 'heavy_rain',
-        value: weather.rainfall_mm_today,
-        threshold: THRESHOLDS.heavy_rain.value,
-      },
-      {
-        trigger_type: 'extreme_heat',
-        value: weather.temperature_c,
-        threshold: THRESHOLDS.extreme_heat.value,
-      },
-      {
-        trigger_type: 'severe_aqi',
-        value: aqiData.aqi,
-        threshold: THRESHOLDS.severe_aqi.value,
-      },
-    ];
-
-    for (const check of checks) {
-      if (check.value > check.threshold) {
-        // Check if disruption already active for this zone+trigger
-        const existing = await query(
-          `SELECT id FROM disruptions WHERE zone_id = $1 AND trigger_type = $2 AND is_active = true`,
-          [zoneId, check.trigger_type]
-        );
-
-        if (existing.rowCount > 0) {
-          console.log(`[TriggerEngine] Disruption already active: ${zone.name} / ${check.trigger_type}`);
-          continue;
-        }
-
-        const disruptionRes = await query(
-          `INSERT INTO disruptions (zone_id, trigger_type, trigger_value, threshold_value, is_active)
-           VALUES ($1, $2, $3, $4, true) RETURNING *`,
-          [zoneId, check.trigger_type, check.value, check.threshold]
-        );
-
-        const disruption = disruptionRes.rows[0];
-        console.log(
-          `[TriggerEngine] New disruption: ${zone.name} / ${check.trigger_type} = ${check.value} (threshold: ${check.threshold})`
-        );
-
-        // Auto-create claims
-        await createAutoClaimsForDisruption(disruption);
-        createdDisruptions.push(disruption);
-      } else {
-        // If was active and now below threshold, mark as resolved
-        const activeRes = await query(
-          `SELECT id FROM disruptions WHERE zone_id = $1 AND trigger_type = $2 AND is_active = true`,
-          [zoneId, check.trigger_type]
-        );
-        if (activeRes.rowCount > 0) {
-          await query(
-            `UPDATE disruptions SET is_active = false, ended_at = NOW()
-             WHERE zone_id = $1 AND trigger_type = $2 AND is_active = true`,
-            [zoneId, check.trigger_type]
-          );
-          console.log(`[TriggerEngine] Disruption resolved: ${zone.name} / ${check.trigger_type}`);
-        }
+    const { rows } = await pool.query('SELECT DISTINCT pincode FROM zones');
+    for (const row of rows) {
+      if (row.pincode) {
+        await processZoneTriggers(row.pincode);
       }
     }
-
-    return createdDisruptions;
   } catch (err) {
-    console.error(`[TriggerEngine] Error checking zone ${zoneId}:`, err);
-    throw err;
-  }
-};
-
-/**
- * Check all active zones (zones that have active policies).
- */
-const checkAllActiveTriggers = async () => {
-  console.log('[TriggerEngine] Running checkAllActiveTriggers...');
-
-  try {
-    const zonesRes = await query(
-      `SELECT DISTINCT z.id FROM zones z
-       JOIN policies p ON p.zone_id = z.id
-       WHERE p.status = 'active'`
-    );
-
-    const results = [];
-    for (const row of zonesRes.rows) {
-      const disruptions = await checkZoneTriggers(row.id);
-      results.push({ zone_id: row.id, disruptions_created: disruptions.length });
-    }
-
-    console.log(`[TriggerEngine] Completed. Checked ${results.length} zones.`);
-    return results;
-  } catch (err) {
-    console.error('[TriggerEngine] checkAllActiveTriggers error:', err);
-    throw err;
+    console.error('[TriggerEngine] Global check failed', err);
   }
 };
 
 module.exports = {
   checkAllActiveTriggers,
-  checkZoneTriggers,
-  createAutoClaimsForDisruption,
-  calculatePayout,
-  estimateHoursLost,
+  processZoneTriggers
 };
