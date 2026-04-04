@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { getAdminFraudStats } from '../../../services/api';
+import { getAdminFraudStats } from '../../services/api';
 import toast from 'react-hot-toast';
 
 export const FraudMonitor = () => {

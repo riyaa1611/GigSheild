@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="antialiased selection:bg-indigo-500/30">
         <Toaster 
           position="top-center" 

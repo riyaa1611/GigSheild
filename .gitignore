@@ -3,6 +3,12 @@ node_modules/
 .env
 .env.local
 .env.*.local
+backend/.env
+backend/.env.local
+frontend/.env
+frontend/.env.local
+ml-service/.env
+ml-service/.env.local
 dist/
 build/
 *.log
@@ -13,3 +19,12 @@ venv/
 .DS_Store
 *.db
 postgres_data/
+
+# ML model artifacts (large binary files)
+ml-service/app/models/*.pkl
+ml-service/app/models/*.joblib
+ml-service/mlruns/
+
+# Local dev overrides
+*.local.js
+.env.production

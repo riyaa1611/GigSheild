@@ -150,7 +150,7 @@ def train():
     # ── Metrics ───────────────────────────────────────────────
     preds_val = np.clip(model.predict(X_val), 0.70, 1.30)
     mae  = mean_absolute_error(y_val, preds_val)
-    rmse = mean_squared_error(y_val, preds_val, squared=False)
+    rmse = np.sqrt(mean_squared_error(y_val, preds_val))
 
     print(f"\n📊 Validation Metrics:")
     print(f"   MAE:  {mae:.4f}")

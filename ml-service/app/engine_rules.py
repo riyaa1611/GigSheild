@@ -26,8 +26,7 @@ class RuleBasedOverride:
          0.35, False),
 
         ("zero_deliveries_with_multiple_claims",
-         lambda r, _fp: (r.get("lastDeliveryCount", 1) == 0
-                         and r.get("claimCount30days", 0) > 3),
+         lambda r, _fp: r.get("lastDeliveryCount", 1) == 0,
          0.40, False),
 
         ("gps_far_from_trigger_zone",

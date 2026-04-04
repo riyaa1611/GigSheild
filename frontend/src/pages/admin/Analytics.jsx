@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { getAdminAnalytics, getAdminAnalyticsTriggers, getAdminAnalyticsClaims, getAdminAnalyticsPlans } from '../../../services/api';
+import { getAdminAnalytics, getAdminAnalyticsTriggers, getAdminAnalyticsClaims, getAdminAnalyticsPlans } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const COLORS = ['#10b981', '#6366f1', '#f59e0b']; // emerald, indigo, amber

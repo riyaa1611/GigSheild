@@ -32,9 +32,9 @@ const processBilling = async () => {
   
   try {
     const { rows: policies } = await pool.query(`
-      SELECT p.id, p.worker_id, p.razorpay_subscription_id, u.phone 
+      SELECT p.id, p.user_id, p.razorpay_subscription_id, u.phone
       FROM policies p
-      JOIN users u ON u.id = p.worker_id 
+      JOIN users u ON u.id = p.user_id
       WHERE p.status = 'active'
     `);
 
@@ -47,12 +47,12 @@ const processBilling = async () => {
       if (paymentFailed) {
         // Suspend policy
         await pool.query('UPDATE policies SET status = $1 WHERE id = $2', ['suspended', policy.id]);
-        
+
         // Clear active Redis Cache
-        await redisClient.del(`policy:active:${policy.worker_id}`);
+        await redisClient.del(`policy:active:${policy.user_id}`);
 
         // Set grace period key (24hr)
-        await redisClient.setEx(`policy:grace:${policy.worker_id}`, 86400, 'active');
+        await redisClient.setEx(`policy:grace:${policy.user_id}`, 86400, 'active');
 
         // Send SMS
         await sendSms(policy.phone, "GigShield: Payment failed. 24hr grace period active.");
@@ -64,9 +64,9 @@ const processBilling = async () => {
         d.setHours(23, 59, 59, 999);
         
         await pool.query('UPDATE policies SET ends_at = $1 WHERE id = $2', [d, policy.id]);
-        
+
         // Clear active Cache so it refreshes with new ends_at
-        await redisClient.del(`policy:active:${policy.worker_id}`);
+        await redisClient.del(`policy:active:${policy.user_id}`);
       }
     }
   } catch (error) {
@@ -79,15 +79,15 @@ const processGracePeriod = async () => {
   
   try {
     const { rows: suspendedPolicies } = await pool.query(`
-      SELECT p.id, p.worker_id, u.phone 
+      SELECT p.id, p.user_id, u.phone
       FROM policies p
-      JOIN users u ON u.id = p.worker_id 
+      JOIN users u ON u.id = p.user_id
       WHERE p.status = 'suspended'
     `);
 
     for (const policy of suspendedPolicies) {
       // Check if they paid during grace
-      const inGrace = await redisClient.get(`policy:grace:${policy.worker_id}`);
+      const inGrace = await redisClient.get(`policy:grace:${policy.user_id}`);
       
       // If grace expired and still suspended
       if (!inGrace) {

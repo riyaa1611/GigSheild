@@ -322,9 +322,10 @@ def score_fraud(req: FraudRequest):
     X_scaled = scaler.transform(X)
 
     raw_model_score = float(-iso_forest.score_samples(X_scaled)[0])
-    # Normalise: Isolation Forest score_samples returns values roughly in [-0.5, 0.5]
-    # We shift and scale to [0, 1]
-    model_score = float(np.clip((raw_model_score + 0.5) / 1.0, 0.0, 1.0))
+    # Normalise using training-time min/max for consistent calibration
+    score_min = bundle.get("score_min", 0.0)
+    score_max = bundle.get("score_max", 1.0)
+    model_score = float(np.clip((raw_model_score - score_min) / (score_max - score_min + 1e-9), 0.0, 1.0))
 
     # ── Blend: 40% rule + 60% model ──────────────────────────
     final_score = float(np.clip(0.40 * rule_score + 0.60 * model_score, 0.0, 1.0))

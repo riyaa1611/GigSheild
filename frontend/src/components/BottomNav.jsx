@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ReceiptText, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Receipt, UserCircle } from 'lucide-react';
 
 export const BottomNav = () => {
   return (
@@ -18,7 +18,7 @@ export const BottomNav = () => {
           to="/payouts" 
           className={({ isActive }) => `flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-400'}`}
         >
-          <ReceiptText className="w-5 h-5" />
+          <Receipt className="w-5 h-5" />
           <span className="text-[10px] font-medium tracking-wide">Payouts</span>
         </NavLink>
 

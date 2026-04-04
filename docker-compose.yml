@@ -13,7 +13,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-gigshield}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gigshield123}
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -33,7 +33,7 @@ services:
     restart: unless-stopped
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     networks:
@@ -78,7 +78,7 @@ services:
     container_name: gigshield_mlservice
     restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "8002:8001"
     volumes:
       - ./ml-service/app:/app/app                   # hot-reload app code
       - ml_models:/app/app/models                   # persist trained model artefacts
@@ -93,24 +93,19 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: gigshield_frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "3000:3000"
+      - "5173:5173"
     volumes:
       - ./frontend/src:/app/src   # hot-reload
     environment:
-      REACT_APP_API_URL: http://localhost:3001/api
-      REACT_APP_SOCKET_URL: http://localhost:3001
-      # Required for CRA to bind to all interfaces inside container
-      HOST: "0.0.0.0"
-      PORT: "3000"
-      # Disable interactive prompts
-      CI: "false"
-      CHOKIDAR_USEPOLLING: "true"
-    command: npm start
+      VITE_API_URL: http://localhost:3001/api
+      VITE_SOCKET_URL: http://localhost:3001
+    command: npm run dev
     networks:
       - gigshield_net
 

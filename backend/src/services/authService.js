@@ -97,8 +97,7 @@ const verifyOtp = async (phone, otp) => {
   const sessionData = JSON.stringify({ token, last_seen: new Date() });
   await redisClient.setEx(`session:${user.id}`, 604800, sessionData);
 
-  // Set last verified timestamp if verification is tracked
-  await pool.query('UPDATE users SET updated_at = NOW() WHERE id = $1', [user.id]);
+  // session stored in Redis above; no updated_at column in schema
 
   return { token, isNewUser, userId: user.id };
 };

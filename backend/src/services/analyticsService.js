@@ -17,8 +17,7 @@ const getDashboardMetrics = async () => {
   const payoutRes = await pool.query(`SELECT SUM(amount) as total FROM payouts WHERE status = 'success'`);
   const totalPaidOut = parseFloat(payoutRes.rows[0].total) || 0;
 
-  const premiumRes = await pool.query(`SELECT SUM(amount) as total FROM payouts WHERE purpose = 'premium'`); // concept: we might not track premiums separately in payouts table yet if handled by Razorpay, but assume policies weekly_premium * lifetime. Mocked for metrics.
-  // Real implementation for premiums using policies table calculation
+  // Estimate total premiums collected from the policies table
   const totalPremiumsRes = await pool.query(`
     SELECT SUM(weekly_premium * LEAST(EXTRACT(EPOCH FROM (NOW() - start_at))/604800, 52)) as total FROM policies
   `);
@@ -30,14 +29,14 @@ const getDashboardMetrics = async () => {
     FROM payouts p JOIN claims c ON c.id = p.claim_id
     WHERE p.status = 'success' AND p.paid_at IS NOT NULL
   `);
-  const avgPayoutTime = parseFloat(avgTimeRes.rows[0].avg) || 0;
+  const avgPayoutTimeMinutes = parseFloat(avgTimeRes.rows[0].avg) || 0;
 
   return {
     totalActiveUsers,
     claimsThisWeek,
     totalPaidOut,
     lossRatio,
-    avgPayoutTime
+    avgPayoutTimeMinutes
   };
 };
 
@@ -81,13 +80,14 @@ const getClaimsVsPremiums = async (days = 30) => {
         FROM claims WHERE status IN ('approved', 'paid') GROUP BY 1
     ),
     daily_premiums AS (
-        SELECT date_trunc('day', created_at)::date AS dt, SUM(amount) as amount 
-        FROM payouts WHERE purpose = 'premium' GROUP BY 1
+        -- Approximate daily premium income from weekly_premium / 7 per active policy
+        SELECT date_trunc('day', start_at)::date AS dt, SUM(weekly_premium / 7) as amount
+        FROM policies GROUP BY 1
     )
     SELECT 
         TO_CHAR(d.dt, 'YYYY-MM-DD') as date,
         COALESCE(c.amount, 0) as "claimsAmount",
-        COALESCE(p.amount, 1500 + RANDOM() * 500) as "premiumsCollected" -- Mock fallback if premiums aren't explicitly captured in payouts
+        COALESCE(p.amount, 0) as "premiumsCollected"
     FROM dates d
     LEFT JOIN daily_claims c ON d.dt = c.dt
     LEFT JOIN daily_premiums p ON d.dt = p.dt
@@ -164,7 +164,18 @@ const getForecast = async () => {
   if (cached) return JSON.parse(cached);
 
   try {
-    const { data } = await axios.get(`${ML_SERVICE_URL}/forecast/disruption`);
+    // Get active pincodes from policies
+    const { rows } = await pool.query(`SELECT DISTINCT u.pincode FROM users u JOIN policies p ON p.user_id = u.id WHERE p.status='active' AND u.pincode IS NOT NULL LIMIT 10`);
+    const pincodes = rows.map(r => r.pincode).filter(Boolean);
+    if (!pincodes.length) pincodes.push('400070'); // fallback
+
+    const results = await Promise.all(pincodes.map(async (zone) => {
+      try {
+        const { data } = await axios.get(`${ML_SERVICE_URL}/forecast/disruption?zone=${zone}&days=7`);
+        return data;
+      } catch { return null; }
+    }));
+    const data = results.filter(Boolean);
     await redisClient.setEx('forecast:zones', 3600, JSON.stringify(data));
     return data;
   } catch (err) {

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getLiveTriggers } from '../../../services/api';
-import { TriggerBadge } from '../../../components/TriggerBadge';
-import { connectSocket } from '../../../services/socket';
+import { getLiveTriggers } from '../../services/api';
+import { TriggerBadge } from '../../components/TriggerBadge';
+import { connectSocket } from '../../services/socket';
 
 const COLOR_MAP = {
   'T-01': '#ef4444', // red

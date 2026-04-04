@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getAdminClaims, getAdminFlaggedClaims, reviewClaim } from '../../../services/api';
-import { TriggerBadge } from '../../../components/TriggerBadge';
-import { connectSocket } from '../../../services/socket';
+import { getAdminClaims, getAdminFlaggedClaims, reviewClaim } from '../../services/api';
+import { TriggerBadge } from '../../components/TriggerBadge';
+import { connectSocket } from '../../services/socket';
 import { ShieldCheck, ShieldAlert, Check, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 

@@ -11,9 +11,9 @@ const router = express.Router();
 router.get('/live', requireAuth, async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM triggers 
-       WHERE created_at >= NOW() - INTERVAL '2 hours' 
-       ORDER BY created_at DESC`
+      `SELECT * FROM triggers
+       WHERE triggered_at >= NOW() - INTERVAL '2 hours'
+       ORDER BY triggered_at DESC`
     );
     res.json({ success: true, count: rows.length, data: rows });
   } catch (err) {

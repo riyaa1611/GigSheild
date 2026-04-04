@@ -1,0 +1,3 @@
+error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.51/system/df": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+find the file specified.
+3Atrue%7D%7D": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.

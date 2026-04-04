@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Tooltip as LeafletTooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getAdminForecast } from '../../../services/api';
+import { getAdminForecast } from '../../services/api';
 import toast from 'react-hot-toast';
 
 export const ForecastMap = () => {

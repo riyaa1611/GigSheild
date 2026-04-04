@@ -91,8 +91,10 @@ def train():
 
     # Raw anomaly scores: lower = more anomalous; map to [0,1]
     raw_scores = -iso.score_samples(X_scaled)   # negate: higher = more anomalous
+    score_min = float(raw_scores.min())
+    score_max = float(raw_scores.max())
     # Normalise to [0, 1]
-    model_scores = (raw_scores - raw_scores.min()) / (raw_scores.max() - raw_scores.min() + 1e-9)
+    model_scores = (raw_scores - score_min) / (score_max - score_min + 1e-9)
 
     # ── Evaluation ────────────────────────────────────────────
     # Convert to binary with threshold = 0.5
@@ -123,6 +125,8 @@ def train():
         "trained_at": datetime.utcnow().isoformat(),
         "auc_roc": float(auc),
         "version": "1.0.0",
+        "score_min": score_min,
+        "score_max": score_max,
     }
     joblib.dump(bundle, MODEL_FILE)
     size_kb = MODEL_FILE.stat().st_size / 1024

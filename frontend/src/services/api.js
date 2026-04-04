@@ -31,7 +31,7 @@ api.interceptors.response.use(
 export const sendOtp = (phone) => api.post('/auth/send-otp', { phone });
 export const verifyOtp = (phone, otp) => api.post('/auth/verify-otp', { phone, otp });
 export const verifyAadhaarMock = (userId, aadhaarNumber) => api.post('/auth/aadhaar-mock', { userId, aadhaarNumber });
-export const linkPlatform = (userId, platform, platformId) => api.post('/auth/link-platform', { userId, platform, platformId });
+export const linkPlatform = (userId, platformType, platformId) => api.post('/auth/link-platform', { platformType, platformId });
 
 // Policy
 export const getPlans = () => api.get('/policies/plans');
