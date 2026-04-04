@@ -1,0 +1,25 @@
+[dotenv@17.2.3] injecting env (23) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+node:internal/modules/cjs/loader:1368
+  throw err;
+  ^
+
+Error: Cannot find module 'cors'
+Require stack:
+- C:\Users\Jitendra Chaudhary\OneDrive\Desktop\GigSheild\backend\src\server.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1365:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1021:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1026:22)
+    at Function._load (node:internal/modules/cjs/loader:1175:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Module.require (node:internal/modules/cjs/loader:1445:12)
+    at require (node:internal/modules/helpers:135:16)
+    at Object.<anonymous> (C:\Users\Jitendra Chaudhary\OneDrive\Desktop\GigSheild\backend\src\server.js:3:14)
+    at Module._compile (node:internal/modules/cjs/loader:1688:14) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Jitendra Chaudhary\\OneDrive\\Desktop\\GigSheild\\backend\\src\\server.js'
+  ]
+}
+
+Node.js v22.18.0

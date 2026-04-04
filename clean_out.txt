@@ -1,0 +1,191 @@
+=== Running Admin API Tests ===
+
+Session injected into Redis successfully.
+TEST A — Analytics dashboard: {
+  "success": true,
+  "totalActiveUsers": 0,
+  "claimsThisWeek": 0,
+  "totalPaidOut": 0,
+  "lossRatio": 0,
+  "avgPayoutTime": 0
+}
+❌ TEST A FAIL: Missing fields
+
+TEST B — Trigger frequency: {
+  "success": true,
+  "data": []
+}
+✅ TEST B PASS
+
+TEST C — Claims vs premiums chart data: {
+  "success": true,
+  "data": [
+    {
+      "date": "2026-03-28",
+      "claimsAmount": 0,
+      "premiumsCollected": 1639.5892191366218
+    },
+    {
+      "date": "2026-03-29",
+      "claimsAmount": 0,
+      "premiumsCollected": 1727.1196844781434
+    },
+    {
+      "date": "2026-03-30",
+      "claimsAmount": 0,
+      "premiumsCollected": 1849.903558953551
+    },
+    {
+      "date": "2026-03-31",
+      "claimsAmount": 0,
+      "premiumsCollected": 1936.296263925924
+    },
+    {
+      "date": "2026-04-01",
+      "claimsAmount": 0,
+      "premiumsCollected": 1837.7995222620934
+    },
+    {
+      "date": "2026-04-02",
+      "claimsAmount": 0,
+      "premiumsCollected": 1781.5696279860988
+    },
+    {
+      "date": "2026-04-03",
+      "claimsAmount": 0,
+      "premiumsCollected": 1757.630558825776
+    },
+    {
+      "date": "2026-04-04",
+      "claimsAmount": 0,
+      "premiumsCollected": 1760.3917835500624
+    }
+  ]
+}
+❌ TEST C FAIL: length is not 7 or missing fields array
+
+TEST D — Plan distribution: {
+  "success": true,
+  "data": []
+}
+✅ TEST D PASS
+
+TEST E — Fraud stats: {
+  "success": true,
+  "fraudScoreDistribution": {
+    "0-0.3": 0,
+    "0.3-0.7": 0,
+    "0.7-1.0": 0
+  },
+  "autoApprovedRate": "0.00",
+  "flaggedRate": "0.00",
+  "manualReviewRate": "0.00",
+  "topFraudSignals": [
+    {
+      "signal": "Device Fingerprint Mismatch",
+      "count": 0
+    },
+    {
+      "signal": "Velocity Exceeded",
+      "count": 14
+    },
+    {
+      "signal": "GPS Spoofing / Inconsistent Ping",
+      "count": 5
+    }
+  ]
+}
+✅ TEST E PASS
+
+TEST F — Forecast endpoint: {
+  "success": true,
+  "data": {
+    "zones": [
+      {
+        "pincode": "400070",
+        "lat": 19.076,
+        "lng": 72.8777,
+        "risk_score": 0.4967
+      },
+      {
+        "pincode": "110001",
+        "lat": 28.6139,
+        "lng": 77.209,
+        "risk_score": 0.4241
+      },
+      {
+        "pincode": "560001",
+        "lat": 12.9716,
+        "lng": 77.5946,
+        "risk_score": 0.4723
+      },
+      {
+        "pincode": "700001",
+        "lat": 22.5726,
+        "lng": 88.3639,
+        "risk_score": 0.3363
+      },
+      {
+        "pincode": "600001",
+        "lat": 13.0827,
+        "lng": 80.2707,
+        "risk_score": 0.4874
+      }
+    ]
+  }
+}
+✅ TEST F PASS
+
+TEST G — Directly test ML forecast: {
+  "zone": "400070",
+  "forecastDays": [
+    {
+      "date": "2026-04-05",
+      "riskScore": 0.4997,
+      "riskLevel": "moderate",
+      "dominantTriggerType": "T-02"
+    },
+    {
+      "date": "2026-04-06",
+      "riskScore": 0.4499,
+      "riskLevel": "moderate",
+      "dominantTriggerType": "T-02"
+    },
+    {
+      "date": "2026-04-07",
+      "riskScore": 0.5203,
+      "riskLevel": "high",
+      "dominantTriggerType": "T-02"
+    },
+    {
+      "date": "2026-04-08",
+      "riskScore": 0.4418,
+      "riskLevel": "moderate",
+      "dominantTriggerType": "T-02"
+    },
+    {
+      "date": "2026-04-09",
+      "riskScore": 0.4312,
+      "riskLevel": "moderate",
+      "dominantTriggerType": "T-02"
+    },
+    {
+      "date": "2026-04-10",
+      "riskScore": 0.4599,
+      "riskLevel": "moderate",
+      "dominantTriggerType": "T-02"
+    },
+    {
+      "date": "2026-04-11",
+      "riskScore": 0.4618,
+      "riskLevel": "moderate",
+      "dominantTriggerType": "T-02"
+    }
+  ],
+  "peakRiskDay": "2026-04-07",
+  "peakRiskScore": 0.5203,
+  "recommendedPlan": "pro",
+  "modelType": "heuristic"
+}
+
+Print summary: 5/7 tests passed.

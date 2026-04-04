@@ -1,0 +1,50 @@
+gigshield_backend  |   hint: undefined,
+gigshield_backend  |   position: '48',
+gigshield_backend  |   internalPosition: undefined,
+gigshield_backend  |   internalQuery: undefined,
+gigshield_backend  |   where: undefined,
+gigshield_backend  |   schema: undefined,
+gigshield_backend  |   table: undefined,
+gigshield_backend  |   column: undefined,
+gigshield_backend  |   dataType: undefined,
+gigshield_backend  |   constraint: undefined,
+gigshield_backend  |   file: 'parse_relation.c',
+gigshield_backend  |   line: '3665',
+gigshield_backend  |   routine: 'errorMissingColumn'
+gigshield_backend  | }
+gigshield_backend  | [RequestLogger] GET /api/analytics | Status: 500 | Time: 275ms | User: admin_test
+gigshield_backend  | [0mGET /api/analytics [31m500[0m 274.250 ms - 114[0m
+gigshield_backend  | [RequestLogger] GET /api/analytics/triggers?days=30 | Status: 200 | Time: 117ms | User: admin_test
+gigshield_backend  | [0mGET /api/analytics/triggers?days=30 [32m200[0m 115.583 ms - 26[0m
+gigshield_backend  | [GlobalErrorHandler] error: column "purpose" does not exist
+gigshield_backend  |     at /app/node_modules/pg-pool/index.js:45:11
+gigshield_backend  |     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+gigshield_backend  |     at async Object.getClaimsVsPremiums (/app/src/services/analyticsService.js:71:20)
+gigshield_backend  |     at async /app/src/routes/analytics.js:36:16 {
+gigshield_backend  |   length: 108,
+gigshield_backend  |   severity: 'ERROR',
+gigshield_backend  |   code: '42703',
+gigshield_backend  |   detail: undefined,
+gigshield_backend  |   hint: undefined,
+gigshield_backend  |   position: '507',
+gigshield_backend  |   internalPosition: undefined,
+gigshield_backend  |   internalQuery: undefined,
+gigshield_backend  |   where: undefined,
+gigshield_backend  |   schema: undefined,
+gigshield_backend  |   table: undefined,
+gigshield_backend  |   column: undefined,
+gigshield_backend  |   dataType: undefined,
+gigshield_backend  |   constraint: undefined,
+gigshield_backend  |   file: 'parse_relation.c',
+gigshield_backend  |   line: '3665',
+gigshield_backend  |   routine: 'errorMissingColumn'
+gigshield_backend  | }
+gigshield_backend  | [RequestLogger] GET /api/analytics/claims-vs-premiums?days=7 | Status: 500 | Time: 16ms | User: admin_test
+gigshield_backend  | [0mGET /api/analytics/claims-vs-premiums?days=7 [31m500[0m 15.033 ms - 114[0m
+gigshield_backend  | [RequestLogger] GET /api/analytics/plans | Status: 200 | Time: 28ms | User: admin_test
+gigshield_backend  | [0mGET /api/analytics/plans [32m200[0m 27.346 ms - 26[0m
+gigshield_backend  | [RequestLogger] GET /api/analytics/fraud/stats | Status: 200 | Time: 25ms | User: admin_test
+gigshield_backend  | [0mGET /api/analytics/fraud/stats [32m200[0m 24.238 ms - 319[0m
+gigshield_backend  | [Analytics] Failed to fetch forecast Request failed with status code 422
+gigshield_backend  | [RequestLogger] GET /api/analytics/forecast | Status: 200 | Time: 323ms | User: admin_test
+gigshield_backend  | [0mGET /api/analytics/forecast [32m200[0m 321.846 ms - 26[0m

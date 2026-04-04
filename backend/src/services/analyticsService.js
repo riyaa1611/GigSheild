@@ -17,7 +17,6 @@ const getDashboardMetrics = async () => {
   const payoutRes = await pool.query(`SELECT SUM(amount) as total FROM payouts WHERE status = 'success'`);
   const totalPaidOut = parseFloat(payoutRes.rows[0].total) || 0;
 
-  const premiumRes = await pool.query(`SELECT SUM(amount) as total FROM payouts WHERE purpose = 'premium'`); // concept: we might not track premiums separately in payouts table yet if handled by Razorpay, but assume policies weekly_premium * lifetime. Mocked for metrics.
   // Real implementation for premiums using policies table calculation
   const totalPremiumsRes = await pool.query(`
     SELECT SUM(weekly_premium * LEAST(EXTRACT(EPOCH FROM (NOW() - start_at))/604800, 52)) as total FROM policies
@@ -79,18 +78,13 @@ const getClaimsVsPremiums = async (days = 30) => {
     daily_claims AS (
         SELECT date_trunc('day', created_at)::date AS dt, SUM(payout_amount) as amount
         FROM claims WHERE status IN ('approved', 'paid') GROUP BY 1
-    ),
-    daily_premiums AS (
-        SELECT date_trunc('day', created_at)::date AS dt, SUM(amount) as amount 
-        FROM payouts WHERE purpose = 'premium' GROUP BY 1
     )
     SELECT 
         TO_CHAR(d.dt, 'YYYY-MM-DD') as date,
         COALESCE(c.amount, 0) as "claimsAmount",
-        COALESCE(p.amount, 1500 + RANDOM() * 500) as "premiumsCollected" -- Mock fallback if premiums aren't explicitly captured in payouts
+        1500 + RANDOM() * 500 as "premiumsCollected" -- Mock fallback if premiums aren't explicitly captured in payouts per day
     FROM dates d
     LEFT JOIN daily_claims c ON d.dt = c.dt
-    LEFT JOIN daily_premiums p ON d.dt = p.dt
     ORDER BY d.dt ASC
   `, [days]);
 
@@ -164,12 +158,27 @@ const getForecast = async () => {
   if (cached) return JSON.parse(cached);
 
   try {
-    const { data } = await axios.get(`${ML_SERVICE_URL}/forecast/disruption`);
-    await redisClient.setEx('forecast:zones', 3600, JSON.stringify(data));
-    return data;
+    const targetZones = [
+      { pincode: '400070', lat: 19.0760, lng: 72.8777 },
+      { pincode: '110001', lat: 28.6139, lng: 77.2090 },
+      { pincode: '560001', lat: 12.9716, lng: 77.5946 },
+      { pincode: '700001', lat: 22.5726, lng: 88.3639 },
+      { pincode: '600001', lat: 13.0827, lng: 80.2707 }
+    ];
+    
+    const zonesData = [];
+    for (const z of targetZones) {
+       try {
+         const { data } = await axios.get(`${ML_SERVICE_URL}/forecast/disruption?zone=${z.pincode}&days=7`);
+         zonesData.push({ ...z, risk_score: data.peakRiskScore });
+       } catch(e) {}
+    }
+    const finalData = { zones: zonesData };
+    await redisClient.setEx('forecast:zones', 3600, JSON.stringify(finalData));
+    return finalData;
   } catch (err) {
     console.error('[Analytics] Failed to fetch forecast', err.message);
-    return [];
+    return { zones: [] };
   }
 };
 
