@@ -1,133 +1,45 @@
-version: '3.9'
-
+version: "3.9"
 services:
-  # ─────────────────────────────────────
-  # PostgreSQL 15
-  # ─────────────────────────────────────
-  postgres:
-    image: postgres:15-alpine
-    container_name: gigshield_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-gigshield}
-      POSTGRES_USER: ${POSTGRES_USER:-gigshield}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gigshield123}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gigshield} -d ${POSTGRES_DB:-gigshield}"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
-    networks:
-      - gigshield_net
-
-  # ─────────────────────────────────────
-  # Redis 7
-  # ─────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: gigshield_redis
-    restart: unless-stopped
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    networks:
-      - gigshield_net
-
-  # ─────────────────────────────────────
-  # Node.js Backend (Express)
-  # ─────────────────────────────────────
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: gigshield_backend
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    env_file:
-      - ./backend/.env
-    environment:
-      # Override docker-internal service URLs regardless of .env
-      DATABASE_URL: postgresql://${POSTGRES_USER:-gigshield}:${POSTGRES_PASSWORD:-gigshield123}@postgres:5432/${POSTGRES_DB:-gigshield}
-      REDIS_URL: redis://redis:6379
-      ML_SERVICE_URL: http://ml-service:8001
-    ports:
-      - "3001:3001"
-    volumes:
-      - ./backend/src:/app/src   # hot-reload: only src/, not node_modules
-    command: npm run dev
-    networks:
-      - gigshield_net
-
-  # ─────────────────────────────────────
-  # FastAPI ML Service (Python)
-  # ─────────────────────────────────────
   ml-service:
-    build:
-      context: ./ml-service
-      dockerfile: Dockerfile
-    container_name: gigshield_mlservice
-    restart: unless-stopped
+    build: ./ml-service
     ports:
       - "8001:8001"
     volumes:
-      - ./ml-service/app:/app/app                   # hot-reload app code
-      - ml_models:/app/app/models                   # persist trained model artefacts
-    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
-    networks:
-      - gigshield_net
-
-  # ─────────────────────────────────────
-  # React Frontend (Vite dev server)
-  # ─────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: gigshield_frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend/src:/app/src   # hot-reload
+      - ./ml-service/app/models:/app/app/models
     environment:
-      REACT_APP_API_URL: http://localhost:3001/api
-      REACT_APP_SOCKET_URL: http://localhost:3001
-      # Required for CRA to bind to all interfaces inside container
-      HOST: "0.0.0.0"
-      PORT: "3000"
-      # Disable interactive prompts
-      CI: "false"
-      CHOKIDAR_USEPOLLING: "true"
-    command: npm start
-    networks:
-      - gigshield_net
+      - PYTHONPATH=/app
+    restart: unless-stopped
 
-# ─────────────────────────────────────
-# Named Volumes
-# ─────────────────────────────────────
-volumes:
-  postgres_data:
-    driver: local
-  redis_data:
-    driver: local
-  ml_models:
-    driver: local
+  admin-backend:
+    build: ./Admin/backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ML_SERVICE_URL=http://ml-service:8001
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET}
+      - ADMIN_PHONES=${ADMIN_PHONES}
+    depends_on:
+      - ml-service
+    restart: unless-stopped
 
-# ─────────────────────────────────────
-# Network
-# ─────────────────────────────────────
-networks:
-  gigshield_net:
-    driver: bridge
+  admin-frontend:
+    build: ./Admin/frontend
+    ports:
+      - "5176:5176"
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - VITE_ADMIN_API_URL=http://localhost:8000
+    depends_on:
+      - admin-backend
+
+  pwa-worker:
+    build: ./PWA-worker
+    ports:
+      - "5175:5175"
+    environment:
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+    restart: unless-stopped

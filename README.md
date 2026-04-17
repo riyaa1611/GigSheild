@@ -251,7 +251,7 @@ We chose a **PWA over a native app** for the following reasons:
 
 ### Module 3: Predictive Risk Modeling
 
-**Algorithm**: LSTM Time Series + Weather Pattern Clustering
+**Algorithm**: Time-series ensemble (XGBoost lag features + seasonal pattern clustering)
 
 **Purpose**: Predict next-week disruption probability per zone, used to:
 
@@ -297,7 +297,7 @@ Node.js + Express (REST API)
 Python (FastAPI microservice)
 ├── /predict/premium      → XGBoost premium multiplier
 ├── /score/fraud          → Isolation Forest fraud score
-└── /forecast/disruption  → LSTM next-week risk prediction
+└── /forecast/disruption  → Tier-1 next-week risk prediction (model-backed)
 ```
 
 ---
@@ -316,7 +316,7 @@ flowchart LR
     G -->|Score 0.3-0.7| I["Secondary\nValidation"]
     G -->|Score > 0.7| J["Manual\nReview Queue"]
 
-    K["Historical\nWeather Data"] --> L["LSTM\nTime Series Model"]
+            K["Historical\nZone Signals"] --> L["Forecast Model v1\nLag + Seasonal"]
     L --> M["Next Week\nRisk Forecast"]
     M --> N["Insurer\nDashboard"]
     M --> O["Worker\nUpgrade Nudge"]
@@ -355,7 +355,7 @@ flowchart LR
 | ----------- | -------------------------------- | ---------------------------- |
 | Serving     | **FastAPI (Python)**       | Async ML inference endpoints |
 | Models      | **XGBoost + Scikit-learn** | Premium + fraud models       |
-| Time Series | **PyTorch LSTM**           | Disruption forecasting       |
+| Time Series | **XGBoost + Lag Features** | Disruption forecasting       |
 | Data        | **Pandas + NumPy**         | Feature pipelines            |
 | Model Store | **MLflow (local)**         | Experiment tracking          |
 
@@ -388,29 +388,28 @@ flowchart LR
 - [X] System architecture design
 - [X] Tech stack finalization
 - [X] This README + repository setup
-- [ ] Wireframes for Worker App and Admin Dashboard
-- [ ] Synthetic dataset generation for ML model training
-- [ ] Basic PWA scaffold (React + Tailwind)
+- [X] Wireframes for Worker App and Admin Dashboard
+- [X] Synthetic dataset generation for ML model training
+- [X] Basic PWA scaffold (React + Tailwind)
 
 ### Phase 2 — Automation & Protection (March 21–April 4)
 
-- [ ] Worker registration + KYC flow
-- [ ] Weekly policy creation + UPI AutoPay mock
-- [ ] Trigger Engine v1 (OpenWeatherMap + AQI APIs, 5 triggers)
-- [ ] Dynamic premium calculation (XGBoost model deployed)
-- [ ] Claims auto-initiation pipeline
-- [ ] Basic fraud detection (rule-based + Isolation Forest v1)
-- [ ] Admin dashboard v1 (live trigger map, claims queue)
+- [X] Worker registration + KYC flow
+- [X] Weekly policy creation + UPI AutoPay mock
+- [X] Trigger Engine v1 (OpenWeatherMap + AQI APIs, 5 triggers)
+- [X] Dynamic premium calculation (XGBoost model deployed)
+- [X] Claims auto-initiation pipeline
+- [X] Basic fraud detection (rule-based + Isolation Forest v1)
+- [X] Admin dashboard v1 (live trigger map, claims queue)
 
 ### Phase 3 — Scale & Optimise (April 5–17)
 
-- [ ] Advanced GPS spoofing detection
-- [ ] LSTM disruption forecast model
-- [ ] Razorpay sandbox payout integration
-- [ ] Worker dashboard (earnings protected, active coverage)
-- [ ] Insurer dashboard (loss ratios, predictive analytics)
-- [ ] End-to-end disruption simulation demo
-- [ ] Final pitch deck (PDF)
+- [X] Advanced GPS spoofing detection
+- [X] Tier-1 disruption forecast model (next-week)
+- [X] Razorpay sandbox payout integration
+- [X] Worker dashboard (earnings protected, active coverage)
+- [X] Insurer dashboard (loss ratios, predictive analytics)
+- [X] End-to-end disruption simulation demo
 
 ---
 
