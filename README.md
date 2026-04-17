@@ -345,7 +345,6 @@ flowchart LR
 | Runtime  | **Node.js 20 + Express** | Fast, async, widely supported   |
 | Database | **PostgreSQL**           | Structured policy + claims data |
 | Cache    | **Redis**                | Session store + trigger dedup   |
-| Queue    | **Bull (Redis-backed)**  | Async payout processing         |
 | Auth     | **JWT + Twilio OTP**     | Aadhaar-linked mobile auth      |
 | API Docs | **Swagger/OpenAPI**      | Clean API documentation         |
 
@@ -357,7 +356,7 @@ flowchart LR
 | Models      | **XGBoost + Scikit-learn** | Premium + fraud models       |
 | Time Series | **XGBoost + Lag Features** | Disruption forecasting       |
 | Data        | **Pandas + NumPy**         | Feature pipelines            |
-| Model Store | **MLflow (local)**         | Experiment tracking          |
+
 
 ### External APIs & Integrations
 
@@ -374,7 +373,6 @@ flowchart LR
 | Layer            | Technology                                                |
 | ---------------- | --------------------------------------------------------- |
 | Hosting          | **Vercel** (Frontend) + **Railway** (Backend) |
-| CI/CD            | **GitHub Actions**                                  |
 | Containerization | **Docker Compose** (local dev)                      |
 | Monitoring       | **UptimeRobot** (free tier)                         |
 
